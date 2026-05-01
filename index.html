@@ -103,6 +103,7 @@
   .b-half{background:rgba(91,140,255,0.1);color:var(--blue);border:1px solid rgba(91,140,255,0.25);}
   .b-win{background:rgba(0,229,160,0.1);color:var(--green);border:1px solid rgba(0,229,160,0.2);}
   .b-loss{background:rgba(255,77,109,0.1);color:var(--red);border:1px solid rgba(255,77,109,0.2);}
+  .b-even{background:rgba(91,140,255,0.1);color:var(--blue);border:1px solid rgba(91,140,255,0.2);}
   .theme-cell{display:flex;align-items:center;font-size:12px;color:var(--text2);white-space:nowrap;}
   .tdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;flex-shrink:0;}
   .stages{display:flex;gap:3px;}
@@ -348,12 +349,15 @@ function calcPnl(t){
 // - Hit 3x → sold 50% at 2x ($1,000 back) + 50% at 3x ($1,500 back) → P&L = +$1,500
 function calcPnlClosed(t){
   const cost=1000, mult=t.max/t.entry;
+  // Use the 'doubled' flag from column L if available, else infer from max_pct
+  const hit2x = t.doubled==='YES' || mult>=2;
+  const hit3x = mult>=3;
   let realized=0;
   const stages=[];
-  if(mult>=2){
+  if(hit2x){
     realized += 0.5*2*cost;
     stages.push('2x');
-    if(mult>=3){
+    if(hit3x){
       realized += 0.5*3*cost;
       stages.push('3x');
     }
@@ -489,6 +493,7 @@ function parseClosed(text){
     const contract=(c[7]||'').trim();
     const strike=num(c[6])||0;
     const close_date=(c[12]||'').trim();
+    const doubled=(c[11]||'').trim().toUpperCase();
     const status=(c[14]||'').trim()||'Closed';
     // Closed-trade P&L: hit 3x → sold both halves. Hit 2x only → half banked, half to $0.
     // Didn't hit 2x → full loss. We infer stages from max_pct (>=300 → 3x, >=200 → 2x).
@@ -507,6 +512,7 @@ function parseClosed(text){
       max_pct,
       close_date,
       close_price:max,   // exit price proxy — the max hit is the sell-trigger price
+      doubled,
       status,
     };
     Object.assign(t,calcPnlClosed(t));
@@ -764,7 +770,7 @@ function renderClosed(){
   }
   tb.innerHTML=d.map(t=>{
     const stHtml=t.stages.map(s=>`<span class="stage s${s[0]}">${s}</span>`).join('');
-    const resultBadge=t.total_pnl>0?`<span class="badge b-win">WIN</span>`:`<span class="badge b-loss">LOSS</span>`;
+    const resultBadge=t.total_pnl>0?`<span class="badge b-win">WIN</span>`:t.total_pnl===0?`<span class="badge b-even">BREAKEVEN</span>`:`<span class="badge b-loss">LOSS</span>`;
     return`<tr>
       <td class="tc" style="color:${tColor(t)}">${t.ticker}</td>
       <td class="nc" title="${t.name}">${t.name}</td>
