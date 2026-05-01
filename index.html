@@ -611,13 +611,15 @@ function buildClosedMetrics(){
     return;
   }
   const wins=CLOSED.filter(t=>t.total_pnl>0);
-  const wr=Math.round(wins.length/n*100);
+  const evens=CLOSED.filter(t=>t.total_pnl===0);
+  const decided=n-evens.length;
+  const wr=decided>0?Math.round(wins.length/decided*100):0;
   const totalPnl=CLOSED.reduce((s,t)=>s+t.total_pnl,0);
   const avgPnl=Math.round(totalPnl/n);
   const best=CLOSED.reduce((a,b)=>a.total_pnl>b.total_pnl?a:b);
   document.getElementById('closed-metrics').innerHTML=[
     {l:'Total Banked',v:dol(totalPnl),c:totalPnl>=0?'g':'r',s:`${n} closed positions`},
-    {l:'Win Rate',v:wr+'%',c:'g',s:`${wins.length} wins · ${n-wins.length} losses`},
+    {l:'Win Rate',v:wr+'%',c:'g',s:`${wins.length} wins · ${n-wins.length-evens.length} losses · ${evens.length} breakeven`},
     {l:'Avg P&L',v:dol(avgPnl),c:avgPnl>=0?'g':'r',s:'per $1,000 deployed'},
     {l:'Best Exit',v:best.ticker,c:'o',s:dol(best.total_pnl)+' banked'},
     {l:'Trades',v:n,c:'',s:'closed · permanent record'},
@@ -659,8 +661,10 @@ function buildClosedCharts(){
   CLOSED.forEach(t=>{const th=t.theme||t.sector||'Other';tm[th]=(tm[th]||0)+t.total_pnl;});
   const themes=Object.entries(tm).sort((a,b)=>b[1]-a[1]);
   const tMax=Math.max(...themes.map(([,v])=>Math.abs(v)))||1;
-  const wins=CLOSED.filter(t=>t.total_pnl>0), losses=CLOSED.filter(t=>t.total_pnl<=0);
-  const wr=Math.round(wins.length/CLOSED.length*100);
+  const wins=CLOSED.filter(t=>t.total_pnl>0), losses=CLOSED.filter(t=>t.total_pnl<0);
+  const evens2=CLOSED.filter(t=>t.total_pnl===0);
+  const decided2=CLOSED.length-evens2.length;
+  const wr=decided2>0?Math.round(wins.length/decided2*100):0;
   const sorted=[...CLOSED].sort((a,b)=>b.total_pnl-a.total_pnl);
   const perf=[...sorted.slice(0,5),...sorted.slice(-Math.min(3,sorted.length))].filter((t,i,a)=>a.indexOf(t)===i);
   const pMax=Math.max(...perf.map(t=>Math.abs(t.total_pnl)))||1;
@@ -675,7 +679,7 @@ function buildClosedCharts(){
         <div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--red)">${losses.length}</div><div style="font-size:12px;color:var(--text3)">losers</div></div>
       </div>
       <div class="wr-bar"><div class="wr-fill" style="width:${wr}%"></div></div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${wr}% WIN RATE · ${CLOSED.length} TOTAL TRADES</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${wr}% WIN RATE · ${CLOSED.length} TOTAL TRADES${evens2.length>0?` · ${evens2.length} BREAKEVEN`:''}</div>
     </div>
     <div class="cc"><div class="cc-title">Top & Bottom Exits</div>
       ${perf.map(t=>{const p=t.total_pnl,f=Math.abs(p)/pMax,col=p>0?'#00e5a0':'#ff4d6d',left=p>=0?50:50-f*47,w=f*47;
@@ -753,7 +757,7 @@ function render(){
 function getClosed(){
   let d=[...CLOSED];
   if(cFilt==='Winners')d=d.filter(t=>t.total_pnl>0);
-  else if(cFilt==='Losers')d=d.filter(t=>t.total_pnl<=0);
+  else if(cFilt==='Losers')d=d.filter(t=>t.total_pnl<0);
   else if(cFilt!=='All')d=d.filter(t=>(t.theme||t.sector)===cFilt);
   if(cQ){const q=cQ.toLowerCase();d=d.filter(t=>t.ticker.toLowerCase().includes(q)||t.name.toLowerCase().includes(q));}
   d.sort((a,b)=>{let va=a[cCol],vb=b[cCol];if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}va=va??'';vb=vb??'';return cDir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);});
