@@ -352,23 +352,28 @@ function calcPnlClosed(t){
   // Use the 'doubled' flag from column L if available, else infer from max_pct
   const hit2x = t.doubled==='YES' || mult>=2;
   const hit3x = mult>=3;
-  let realized=0;
-  const stages=[];
-  if(hit2x){
-    realized += 0.5*2*cost;
-    stages.push('2x');
-    if(hit3x){
-      realized += 0.5*3*cost;
-      stages.push('3x');
-    }
-  }
-  const total_pnl=Math.round(realized-cost);
-  const pnl_pct=Math.round((total_pnl/cost)*100);
+  // Calculate actual contract count first so odd-lot splits are accurate
   const contractCost=t.entry*100;
   const floored=Math.floor(cost/contractCost);
   const ceiled=floored+1;
   const contracts=(ceiled*contractCost-cost)<=100?ceiled:floored;
-  return{realized:Math.round(realized),unrealized:0,total_pnl,pnl_pct,rem_pct:0,stages,contracts};
+  const actualCost=contracts*contractCost;
+  // Sell floor(n/2) at 2x, remaining at 3x (or 0)
+  const sold2x=Math.floor(contracts/2);
+  const rem=contracts-sold2x;
+  let realized=0;
+  const stages=[];
+  if(hit2x){
+    realized += sold2x*contractCost*2;
+    stages.push('2x');
+    if(hit3x){
+      realized += rem*contractCost*3;
+      stages.push('3x');
+    }
+  }
+  const total_pnl=Math.round(realized-actualCost);
+  const pnl_pct=Math.round((total_pnl/actualCost)*100);
+  return{realized:Math.round(realized),unrealized:0,total_pnl,pnl_pct,rem_pct:0,stages,contracts,actualCost:Math.round(actualCost)};
 }
 
 // ── Yahoo Finance via Cloudflare Worker ──────────────────────────────────────
