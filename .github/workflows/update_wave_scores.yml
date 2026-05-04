@@ -1,0 +1,40 @@
+name: Update Surf Report Scores
+
+on:
+  schedule:
+    # Every 30 min Mon-Fri during US market hours (9:30am-4pm ET = 1:30pm-8pm UTC)
+    - cron: '30 13 * * 1-5'
+    - cron: '0,30 14-19 * * 1-5'
+    - cron: '0 20 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-scores:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch surf report scores
+        env:
+          TD_KEY: ${{ secrets.TD_KEY }}
+        run: python fetch_scores_wave.py
+
+      - name: Commit and push scores.json
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add scores.json
+          git diff --staged --quiet || git commit -m "Update surf report scores [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
+          git push
