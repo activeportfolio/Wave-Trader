@@ -1026,11 +1026,10 @@ function renderSqueeze() {
     const rsiColor = r.rsi!=null?(r.rsi>=50?'#22c55e':'#ef4444'):'#555';
     const swPct = Math.max(0,Math.min(100,r.swellScore));
 
-    const ago = r.lastSignal.barsAgo===0?'today':r.lastSignal.barsAgo+'d ago';
-    const regHTML = reg
+    const regHTML = reg && r.lastSignal
       ? `<div class="regime-badge">
           <span class="regime-label" style="color:${reg.color};background:${reg.bg}">${reg.label}</span>
-          <span class="regime-tag" style="color:${reg.tagColor};background:${reg.tagBg}">(${reg.tag} · ${ago})</span>
+          <span class="regime-tag" style="color:${reg.tagColor};background:${reg.tagBg}">(${reg.tag} · ${r.lastSignal.barsAgo===0?'today':r.lastSignal.barsAgo+'d ago'})</span>
         </div>`
       : dash;
 
