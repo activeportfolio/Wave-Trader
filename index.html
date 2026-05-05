@@ -202,6 +202,7 @@
   <div class="info-banner">Positions move here permanently once you close them at <span>3x</span> and move the row to your <span>CLOSED TRADES</span> Wave Trader Sheet tab. Rows survive deletion from the active sheet.</div>
   <div class="metrics" id="closed-metrics"><div class="loading">Loading closed trades...</div></div>
   <div class="charts" id="closed-charts" style="margin-bottom:20px;"></div>
+  <div id="multiplier-rates" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
   <div class="controls">
     <span class="ctrl-label">Filter:</span>
     <div id="closed-filters" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
@@ -420,7 +421,7 @@ function calcPnlClosed(t){
   const stages=[];
   if(hit2x){
     realized += sold2x*contractCost*2; stages.push('2x');
-    if(hit3x){ realized += rem*contractCost*3; stages.push('3x'); }
+    if(hit3x){ const closePrice=t.close_price||t.entry*3; realized += rem*closePrice*100; stages.push('3x'); }
   }
   const total_pnl=Math.round(realized-actualCost);
   const pnl_pct=Math.round((total_pnl/actualCost)*100);
@@ -511,9 +512,10 @@ function parseClosed(text){
     const contract=(c[7]||'').trim();
     const strike=num(c[6])||0;
     const close_date=(c[12]||'').trim();
+    const close_price=num(c[13])||null;
     const doubled=(c[11]||'').trim().toUpperCase();
     const status=(c[14]||'').trim()||'Closed';
-    const t={ticker,name:(c[2]||ticker).trim(),sector:(c[3]||'').trim(),industry:(c[4]||'').trim(),theme:(c[5]||'').trim(),entry_date,contract,strike,entry,current:max,max,max_pct,close_date,close_price:max,doubled,status};
+    const t={ticker,name:(c[2]||ticker).trim(),sector:(c[3]||'').trim(),industry:(c[4]||'').trim(),theme:(c[5]||'').trim(),entry_date,contract,strike,entry,current:max,max,max_pct,close_date,close_price,doubled,status};
     Object.assign(t,calcPnlClosed(t));
     trades.push(t);
   }
@@ -554,7 +556,7 @@ async function loadData(){
   const ps=document.getElementById('price-status');
   if(ps){ ps.textContent='using sheet data'; ps.className='price-status done'; }
   buildMetrics(); buildCharts(); buildFilters(); render();
-  buildClosedMetrics(); buildClosedCharts(); buildClosedFilters(); renderClosed();
+  buildClosedMetrics(); buildMultiplierRates(); buildClosedCharts(); buildClosedFilters(); renderClosed();
   if(ACTIVE.length) await fetchAllPrices(ACTIVE);
 }
 
@@ -580,6 +582,23 @@ function buildMetrics(){
   ].map(m=>`<div class="mc${m.c==='o'?' hi':''}"><div class="mc-label">${m.l}</div><div class="mc-val ${m.c}">${m.v}</div><div class="mc-sub">${m.s}</div></div>`).join('');
 }
 
+function buildMultiplierRates(){
+  const n=CLOSED.length;
+  if(!n){ document.getElementById('multiplier-rates').innerHTML=''; return; }
+  const multColors={2:'var(--green)',3:'var(--blue)',4:'#ff8c42',5:'var(--red)',10:'var(--gold)'};
+  const rates=[2,3,4,5,10].map(x=>{
+    const threshold=(x-1)*100;
+    const count=CLOSED.filter(t=>t.max_pct>=threshold).length;
+    const pct=Math.round(count/n*100);
+    const col=multColors[x];
+    return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 16px;">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">${x}x Rate</span>
+      <span style="font-family:var(--mono);font-size:20px;font-weight:700;color:${col}">${pct}%</span>
+    </div>`;
+  });
+  document.getElementById('multiplier-rates').innerHTML=`<div style="display:flex;gap:8px;justify-content:center;width:100%;">${rates.join('')}</div>`;
+}
+
 function buildClosedMetrics(){
   const n=CLOSED.length;
   if(!n){ document.getElementById('closed-metrics').innerHTML='<div class="mc"><div class="mc-label">Closed Trades</div><div class="mc-val dim">—</div><div class="mc-sub">No closed trades yet</div></div>'; return; }
@@ -588,12 +607,13 @@ function buildClosedMetrics(){
   const decided=n-evens.length;
   const wr=decided>0?Math.round(wins.length/decided*100):0;
   const totalPnl=CLOSED.reduce((s,t)=>s+t.total_pnl,0);
-  const avgPnl=Math.round(totalPnl/n);
+  const totalCost=CLOSED.reduce((s,t)=>s+(t.actualCost||1000),0);
+  const roi=Math.round((totalPnl/totalCost)*100);
   const best=CLOSED.reduce((a,b)=>a.total_pnl>b.total_pnl?a:b);
   document.getElementById('closed-metrics').innerHTML=[
-    {l:'Total Banked',v:dol(totalPnl),c:totalPnl>=0?'g':'r',s:`${n} closed positions`},
+    {l:'Total Profits',v:dol(totalPnl),c:totalPnl>=0?'g':'r',s:`${n} closed positions`},
     {l:'Win Rate',v:wr+'%',c:'g',s:`${wins.length} wins · ${n-wins.length-evens.length} losses`},
-    {l:'Avg P&L',v:dol(avgPnl),c:avgPnl>=0?'g':'r',s:'per $1,000 deployed'},
+    {l:'ROI',v:roi+'%',c:roi>=0?'g':'r',s:'$'+totalCost.toLocaleString()+' total deployed'},
     {l:'Best Exit',v:best.ticker,c:'o',s:dol(best.total_pnl)+' banked'},
     {l:'Trades',v:n,c:'',s:'closed · permanent record'},
   ].map(m=>`<div class="mc${m.c==='o'?' hi':''}"><div class="mc-label">${m.l}</div><div class="mc-val ${m.c}">${m.v}</div><div class="mc-sub">${m.s}</div></div>`).join('');
