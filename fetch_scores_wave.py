@@ -375,13 +375,11 @@ def calc_takeoff_meter(bars195, sym=""):
     bd["maSlope"]    = ma_slope
     bd["priceVsMa"]  = price_vs_ma
 
-    # 3 — 3 prior CLOSED ROC bars (bars n-2, n-3, n-4 relative to current open bar n-1)
-    # bar n-1 = most recent closed, bar n-2 = one before, etc.
-    # We count bars 1,2,3 back from the last closed bar (n-2 is 1 prior, n-3 is 2 prior, n-4 is 3 prior)
+    # 3 — Current bar + 2 prior closed bars (n-1, n-2, n-3)
     roc_len  = 3
     roc_bars = 0
-    for i in range(1, 4):           # i=1,2,3 → bars prior to most recent closed
-        idx = n - 1 - i             # n-2, n-3, n-4
+    for i in range(0, 3):           # i=0,1,2 → current bar + 2 prior
+        idx = n - 1 - i             # n-1, n-2, n-3
         if idx >= roc_len:
             roc = (closes[idx] - closes[idx - roc_len]) / closes[idx - roc_len] * 100
             if roc > 0:
@@ -389,13 +387,13 @@ def calc_takeoff_meter(bars195, sym=""):
     score += roc_bars
     bd["rocBars"] = roc_bars
 
-    # 4 — Most recent CLOSED ROC bar (n-1) vs 90th percentile of prior 20 bars (n-2 to n-21)
+    # 4 — Current live bar ROC vs 90th percentile of prior 40 closed bars
     pct_len   = 40
-    last_closed_roc = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
-    start     = max(roc_len, n - 1 - pct_len)
+    live_roc  = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
+    start     = max(roc_len, n - pct_len)
     roc_values = [
         (closes[i] - closes[i - roc_len]) / closes[i - roc_len] * 100
-        for i in range(start, n - 1)   # excludes current closed bar (n-1)
+        for i in range(start, n)
         if i >= roc_len
     ]
 
@@ -405,11 +403,11 @@ def calc_takeoff_meter(bars195, sym=""):
         p90_idx    = max(0, math.ceil(0.9 * len(sorted_roc)) - 1)
         p90        = sorted_roc[p90_idx]
 
-        if p90 > 0 and last_closed_roc > 0:
-            if last_closed_roc >= p90:
+        if p90 > 0 and live_roc > 0:
+            if live_roc >= p90:
                 roc_pct = 5
             else:
-                pct_below = (p90 - last_closed_roc) / abs(p90)
+                pct_below = (p90 - live_roc) / abs(p90)
                 if pct_below   <= 0.10: roc_pct = 4
                 elif pct_below <= 0.20: roc_pct = 3
                 elif pct_below <= 0.30: roc_pct = 2
@@ -422,7 +420,7 @@ def calc_takeoff_meter(bars195, sym=""):
 
     if sym == "HPE":
         print(f"  [HPE DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
-        print(f"  [HPE DEBUG] last_closed_roc={last_closed_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
+        print(f"  [HPE DEBUG] live_roc={live_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
 
     return {"score": min(10, max(0, score)), "breakdown": bd}
 
