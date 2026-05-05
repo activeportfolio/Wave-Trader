@@ -390,7 +390,7 @@ def calc_takeoff_meter(bars195, sym=""):
     bd["rocBars"] = roc_bars
 
     # 4 — Most recent CLOSED ROC bar (n-1) vs 90th percentile of prior 20 bars (n-2 to n-21)
-    pct_len   = 20
+    pct_len   = 40
     last_closed_roc = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
     start     = max(roc_len, n - 1 - pct_len)
     roc_values = [
