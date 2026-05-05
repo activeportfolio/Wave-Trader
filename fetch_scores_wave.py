@@ -149,7 +149,7 @@ def calc_takeoff_meter(bars195):
     bd["maSlope"]    = ma_slope
     bd["priceVsMa"]  = price_vs_ma
 
-    # 3 — Trailing 3 ROC bars (3-bar ROC)
+    # 3 — Trailing 3 ROC bars (3-bar ROC) — 1 pt per positive bar
     roc_len  = 3
     roc_bars = 0
     for i in range(3):
@@ -161,12 +161,14 @@ def calc_takeoff_meter(bars195):
     score += roc_bars
     bd["rocBars"] = roc_bars
 
-    # 4 — ROC proximity to 90th percentile (20-bar lookback)
+    # 4 — ROC proximity to 90th percentile (20-bar lookback, excluding current bar)
     pct_len    = 20
     start      = max(roc_len, n - pct_len)
+    cur_roc    = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
+    # Exclude the last bar (n-1) so cur_roc can't inflate its own percentile
     roc_values = [
         (closes[i] - closes[i - roc_len]) / closes[i - roc_len] * 100
-        for i in range(start, n)
+        for i in range(start, n - 1)
         if i >= roc_len
     ]
 
@@ -175,7 +177,6 @@ def calc_takeoff_meter(bars195):
         sorted_roc = sorted(roc_values)
         p90_idx    = max(0, math.ceil(0.9 * len(sorted_roc)) - 1)
         p90        = sorted_roc[p90_idx]
-        cur_roc    = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
 
         if p90 > 0:
             if cur_roc >= p90:
