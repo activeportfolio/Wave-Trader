@@ -347,7 +347,7 @@ def calc_swell_score(bars195, lookback=252):
     return {"score": round(score, 2), "price": round(price, 2)}
 
 # ── Takeoff Meter (10 pts) ────────────────────────────────────────────────────
-def calc_takeoff_meter(bars195):
+def calc_takeoff_meter(bars195, sym=""):
     """
     10-point system:
       1 pt  — 5-day MA slope (10 bars at 2 bars/day positive)
@@ -419,6 +419,10 @@ def calc_takeoff_meter(bars195):
 
     score += roc_pct
     bd["rocPercentile"] = roc_pct
+
+    if sym == "HPE":
+        print(f"  [HPE DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
+        print(f"  [HPE DEBUG] last_closed_roc={last_closed_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
 
     return {"score": min(10, max(0, score)), "breakdown": bd}
 
@@ -493,7 +497,7 @@ def main():
                     raise ValueError(f"only {len(bars195)} 195-min bars (need 14+)")
 
                 swell   = calc_swell_score(bars195, 252)
-                takeoff = calc_takeoff_meter(bars195)
+                takeoff = calc_takeoff_meter(bars195, sym)
 
                 # RSI + Regime from daily bars (trend direction)
                 day_vals = dday.get("values", []) if not dday.get("status") == "error" else []
