@@ -238,7 +238,7 @@ def main():
             # 1h bars → 195-min aggregation for Swell Score + Takeoff Meter
             # daily bars → RSI(14) + Regime (trend direction)
             raw_1h  = td_fetch(f"{BASE}/time_series?symbol={sym_str}&interval=1h&outputsize=1000&apikey={TD_KEY}")
-            raw_day = td_fetch(f"{BASE}/time_series?symbol={sym_str}&interval=1day&outputsize=60&apikey={TD_KEY}")
+            raw_day = td_fetch(f"{BASE}/time_series?symbol={sym_str}&interval=1day&outputsize=252&apikey={TD_KEY}")
         except Exception as e:
             print(f"  Batch failed: {e}")
             for s in batch:
