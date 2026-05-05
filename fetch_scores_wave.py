@@ -235,10 +235,10 @@ def main():
         print(f"Batch {i+1}/{math.ceil(total/BATCH)}: {sym_str}")
 
         try:
-            # outputsize=1000 → ~333 195-min bars after aggregation (enough for 252 lookback)
-            raw = td_fetch(
-                f"{BASE}/time_series?symbol={sym_str}&interval=1h&outputsize=1000&apikey={TD_KEY}"
-            )
+            # 1h bars → 195-min aggregation for Swell Score + Takeoff Meter
+            # daily bars → RSI(14) + Regime (trend direction)
+            raw_1h  = td_fetch(f"{BASE}/time_series?symbol={sym_str}&interval=1h&outputsize=1000&apikey={TD_KEY}")
+            raw_day = td_fetch(f"{BASE}/time_series?symbol={sym_str}&interval=1day&outputsize=60&apikey={TD_KEY}")
         except Exception as e:
             print(f"  Batch failed: {e}")
             for s in batch:
@@ -246,15 +246,17 @@ def main():
             time.sleep(DELAY)
             continue
 
-        data = norm_batch(raw, batch)
+        data_1h  = norm_batch(raw_1h,  batch)
+        data_day = norm_batch(raw_day, batch)
 
         for sym in batch:
             try:
-                d = data.get(sym, {})
-                if d.get("status") == "error":
-                    raise ValueError(d.get("message", "error"))
+                d1h  = data_1h.get(sym, {})
+                dday = data_day.get(sym, {})
+                if d1h.get("status") == "error":
+                    raise ValueError(d1h.get("message", "error"))
 
-                values = d.get("values", [])
+                values = d1h.get("values", [])
                 if len(values) < 90:
                     raise ValueError(f"only {len(values)} 1h bars")
 
@@ -265,8 +267,14 @@ def main():
                 swell   = calc_swell_score(bars195, 252)
                 takeoff = calc_takeoff_meter(bars195)
 
-                closes = [b["close"] for b in bars195]
-                rsi, last_signal = calc_rsi(closes, 14)
+                # RSI + Regime from daily bars (trend direction)
+                day_vals = dday.get("values", []) if not dday.get("status") == "error" else []
+                if len(day_vals) >= 20:
+                    day_closes = [float(x["close"]) for x in reversed(day_vals)]
+                    rsi, last_signal = calc_rsi(day_closes, 14)
+                else:
+                    closes_195 = [b["close"] for b in bars195]
+                    rsi, last_signal = calc_rsi(closes_195, 14)
 
                 scores[sym] = {
                     "swellScore":       swell["score"],
