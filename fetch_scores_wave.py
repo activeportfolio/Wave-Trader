@@ -375,11 +375,13 @@ def calc_takeoff_meter(bars195):
     bd["maSlope"]    = ma_slope
     bd["priceVsMa"]  = price_vs_ma
 
-    # 3 — Trailing 3 ROC bars (3-bar ROC) — 1 pt per positive bar
+    # 3 — 3 prior CLOSED ROC bars (bars n-2, n-3, n-4 relative to current open bar n-1)
+    # bar n-1 = most recent closed, bar n-2 = one before, etc.
+    # We count bars 1,2,3 back from the last closed bar (n-2 is 1 prior, n-3 is 2 prior, n-4 is 3 prior)
     roc_len  = 3
     roc_bars = 0
-    for i in range(3):
-        idx = n - 1 - i
+    for i in range(1, 4):           # i=1,2,3 → bars prior to most recent closed
+        idx = n - 1 - i             # n-2, n-3, n-4
         if idx >= roc_len:
             roc = (closes[idx] - closes[idx - roc_len]) / closes[idx - roc_len] * 100
             if roc > 0:
@@ -387,14 +389,13 @@ def calc_takeoff_meter(bars195):
     score += roc_bars
     bd["rocBars"] = roc_bars
 
-    # 4 — ROC proximity to 90th percentile (20-bar lookback, excluding current bar)
-    pct_len    = 20
-    start      = max(roc_len, n - pct_len)
-    cur_roc    = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
-    # Exclude the last bar (n-1) so cur_roc can't inflate its own percentile
+    # 4 — Most recent CLOSED ROC bar (n-1) vs 90th percentile of prior 20 bars (n-2 to n-21)
+    pct_len   = 20
+    last_closed_roc = (closes[-1] - closes[-1 - roc_len]) / closes[-1 - roc_len] * 100
+    start     = max(roc_len, n - 1 - pct_len)
     roc_values = [
         (closes[i] - closes[i - roc_len]) / closes[i - roc_len] * 100
-        for i in range(start, n - 1)
+        for i in range(start, n - 1)   # excludes current closed bar (n-1)
         if i >= roc_len
     ]
 
@@ -404,17 +405,17 @@ def calc_takeoff_meter(bars195):
         p90_idx    = max(0, math.ceil(0.9 * len(sorted_roc)) - 1)
         p90        = sorted_roc[p90_idx]
 
-        if p90 > 0:
-            if cur_roc >= p90:
+        if p90 > 0 and last_closed_roc > 0:
+            if last_closed_roc >= p90:
                 roc_pct = 5
             else:
-                pct_below = (p90 - cur_roc) / abs(p90)
+                pct_below = (p90 - last_closed_roc) / abs(p90)
                 if pct_below   <= 0.10: roc_pct = 4
                 elif pct_below <= 0.20: roc_pct = 3
                 elif pct_below <= 0.30: roc_pct = 2
                 else:                   roc_pct = 1
         else:
-            roc_pct = 3 if cur_roc >= p90 else 1
+            roc_pct = 1
 
     score += roc_pct
     bd["rocPercentile"] = roc_pct
