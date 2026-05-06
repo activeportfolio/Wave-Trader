@@ -626,6 +626,22 @@ function buildClosedMetrics(){
   ].map(m=>`<div class="mc${m.c==='o'?' hi':''}"><div class="mc-label">${m.l}</div><div class="mc-val ${m.c}">${m.v}</div><div class="mc-sub">${m.s}</div></div>`).join('');
 }
 
+function makePie(entries, total){
+  const colors=['#00e5a0','#5b8cff','#f5c842','#ff4d6d','#a56af5','#00c9d4','#ff8c42','#68c44a','#f060b5','#8a8fa8'];
+  let angle=0;
+  const slices=entries.map(([s,c],i)=>{
+    const pct=c/total;
+    const a1=angle,a2=angle+pct*360; angle=a2;
+    const r=60,cx=70,cy=70;
+    const x1=cx+r*Math.cos((a1-90)*Math.PI/180),y1=cy+r*Math.sin((a1-90)*Math.PI/180);
+    const x2=cx+r*Math.cos((a2-90)*Math.PI/180),y2=cy+r*Math.sin((a2-90)*Math.PI/180);
+    return{s,c,pct,col:colors[i%colors.length],x1,y1,x2,y2,large:pct>0.5?1:0,cx,cy,r};
+  });
+  const svgSlices=slices.map(sl=>`<path d="M${sl.cx},${sl.cy} L${sl.x1.toFixed(1)},${sl.y1.toFixed(1)} A${sl.r},${sl.r} 0 ${sl.large},1 ${sl.x2.toFixed(1)},${sl.y2.toFixed(1)} Z" fill="${sl.col}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+  const legend=slices.map(sl=>`<div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:2px;background:${sl.col};flex-shrink:0;"></div><span style="color:var(--text2);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sl.s}</span><span style="color:var(--text3);font-family:var(--mono);font-size:10px;margin-left:auto;padding-left:4px;">${Math.round(sl.pct*100)}%</span></div>`).join('');
+  return`<div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><svg width="140" height="140" viewBox="0 0 140 140">${svgSlices}</svg><div style="width:100%;display:flex;flex-direction:column;gap:4px;">${legend}</div></div>`;
+}
+
 function buildCharts(){
   const tm={},sm={};
   ACTIVE.forEach(t=>{ const th=t.theme||t.sector||'Other'; tm[th]=(tm[th]||0)+1; sm[t.sector||'Other']=(sm[t.sector||'Other']||0)+1; });
@@ -636,26 +652,26 @@ function buildCharts(){
   const perf=[...sorted.slice(0,5),...sorted.slice(-Math.min(3,sorted.length))].filter((t,i,a)=>a.indexOf(t)===i);
   const pMax=Math.max(...perf.map(t=>Math.abs(t.total_pnl)))||1;
   document.getElementById('charts').innerHTML=`
-    <div class="cc"><div class="cc-title">By Theme</div>${themes.map(([th,c])=>`<div class="br"><div class="br-label">${th}</div><div class="br-track"><div class="br-fill" style="width:${Math.round(c/tMax*100)}%;background:${TC[th]||'#888'}"></div></div><div class="br-cnt">${c}</div></div>`).join('')}</div>
-    <div class="cc"><div class="cc-title">By Sector</div>${sectors.map(([s,c])=>`<div class="br"><div class="br-label">${s}</div><div class="br-track"><div class="br-fill" style="width:${Math.round(c/sMax*100)}%;background:#5b8cff"></div></div><div class="br-cnt">${c}</div></div>`).join('')}</div>
     <div class="cc"><div class="cc-title">Sector Exposure</div>${(()=>{
-      const sec={};
-      ACTIVE.forEach(t=>{const s=t.sector||t.theme||'Other';sec[s]=(sec[s]||0)+1;});
-      const total=ACTIVE.length||1;
-      const entries=Object.entries(sec).sort((a,b)=>b[1]-a[1]);
-      const colors=['#00e5a0','#5b8cff','#f5c842','#ff4d6d','#a56af5','#00c9d4','#ff8c42','#68c44a','#f060b5','#8a8fa8'];
-      let angle=0;
-      const slices=entries.map(([s,c],i)=>{
-        const pct=c/total;
-        const a1=angle,a2=angle+pct*360; angle=a2;
-        const r=70,cx=80,cy=80;
-        const x1=cx+r*Math.cos((a1-90)*Math.PI/180),y1=cy+r*Math.sin((a1-90)*Math.PI/180);
-        const x2=cx+r*Math.cos((a2-90)*Math.PI/180),y2=cy+r*Math.sin((a2-90)*Math.PI/180);
-        return{s,c,pct,col:colors[i%colors.length],x1,y1,x2,y2,large:pct>0.5?1:0,cx,cy,r};
+      const sec={};ACTIVE.forEach(t=>{const s=t.sector||'Other';sec[s]=(sec[s]||0)+1;});
+      return makePie(Object.entries(sec).sort((a,b)=>b[1]-a[1]),ACTIVE.length||1);
+    })()}</div>
+    <div class="cc"><div class="cc-title">Theme Exposure</div>${(()=>{
+      const th={};ACTIVE.forEach(t=>{const s=t.theme||'Other';th[s]=(th[s]||0)+1;});
+      return makePie(Object.entries(th).sort((a,b)=>b[1]-a[1]),ACTIVE.length||1);
+    })()}</div>
+    <div class="cc"><div class="cc-title">Expiration Exposure</div>${(()=>{
+      const months={jan:'Jan',feb:'Feb',mar:'Mar',apr:'Apr',may:'May',jun:'Jun',jul:'Jul',aug:'Aug',sep:'Sep',oct:'Oct',nov:'Nov',dec:'Dec'};
+      const exp={};
+      ACTIVE.forEach(t=>{
+        const c=(t.contract||'').toLowerCase();
+        const m=Object.keys(months).find(k=>c.includes(k));
+        const label=m?months[m]:'Unknown';
+        exp[label]=(exp[label]||0)+1;
       });
-      const svgSlices=slices.map(sl=>`<path d="M${sl.cx},${sl.cy} L${sl.x1.toFixed(1)},${sl.y1.toFixed(1)} A${sl.r},${sl.r} 0 ${sl.large},1 ${sl.x2.toFixed(1)},${sl.y2.toFixed(1)} Z" fill="${sl.col}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
-      const legend=slices.map(sl=>`<div style="display:flex;align-items:center;gap:6px;"><div style="width:8px;height:8px;border-radius:2px;background:${sl.col};flex-shrink:0;"></div><span style="color:var(--text2);font-size:12px;">${sl.s}</span><span style="color:var(--text3);font-family:var(--mono);font-size:11px;margin-left:auto;">${Math.round(sl.pct*100)}%</span></div>`).join('');
-      return`<div style="display:flex;gap:16px;align-items:center;"><svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">${svgSlices}</svg><div style="display:flex;flex-direction:column;gap:5px;flex:1;">${legend}</div></div>`;
+      return makePie(Object.entries(exp).sort((a,b)=>b[1]-a[1]),ACTIVE.length||1);
+    })()}</div>
+  \`;
     })()}</div>`;
 }
 
