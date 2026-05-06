@@ -653,7 +653,32 @@ function buildClosedCharts(){
   document.getElementById('closed-charts').innerHTML=`
     <div class="cc"><div class="cc-title">P&L by Theme</div>${themes.map(([th,v])=>{const col=v>=0?'#00e5a0':'#ff4d6d',w=Math.round(Math.abs(v)/tMax*100);return`<div class="br"><div class="br-label">${th}</div><div class="br-track"><div class="br-fill" style="width:${w}%;background:${col}"></div></div><div class="br-cnt" style="width:70px;color:${col}">${v>=0?'+$':'-$'}${Math.abs(v).toLocaleString()}</div></div>`;}).join('')}</div>
     <div class="cc"><div class="cc-title">Win / Loss</div><div style="display:flex;gap:24px;margin-bottom:12px;"><div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--green)">${wins.length}</div><div style="font-size:15px;color:var(--text3)">winners</div></div><div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--red)">${losses.length}</div><div style="font-size:15px;color:var(--text3)">losers</div></div><div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--blue)">${evens2.length}</div><div style="font-size:15px;color:var(--text3)">breakeven</div></div></div><div class="wr-bar"><div class="wr-fill" style="width:${wr}%"></div></div><div style="font-family:var(--mono);font-size:12px;color:var(--text3)">${wr}% WIN RATE · ${CLOSED.length} TOTAL</div></div>
-    <div class="cc"><div class="cc-title">Top & Bottom Exits</div>${perf.map(t=>{const p=t.total_pnl,f=Math.abs(p)/pMax,col=p>0?'#00e5a0':'#ff4d6d',left=p>=0?50:50-f*47,w=f*47;return`<div class="perf-row"><div class="perf-tick" style="color:${tColor(t)}">${t.ticker}</div><div class="perf-wrap"><div class="perf-zero"></div><div class="perf-bar" style="left:${left}%;width:${w}%;background:${col}"></div></div><div class="perf-pct ${p>0?'pos':'neg'}">${p>=0?'+$':'-$'}${Math.abs(p).toLocaleString()}</div></div>`;}).join('')}</div>`;
+    <div class="cc"><div class="cc-title">Monthly P&L</div>${(()=>{
+        const months={};
+        CLOSED.forEach(t=>{
+          if(!t.close_date) return;
+          const parts=t.close_date.split('/');
+          if(parts.length<2) return;
+          const key=parts[2]+'-'+parts[0].padStart(2,'0');
+          const label=new Date(parseInt(parts[2]),parseInt(parts[0])-1,1).toLocaleString('en-US',{month:'short',year:'2-digit'});
+          if(!months[key]) months[key]={label,pnl:0};
+          months[key].pnl+=t.total_pnl;
+        });
+        const sorted=Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0]));
+        if(!sorted.length) return '<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:20px 0">No closed trades yet</div>';
+        const maxAbs=Math.max(...sorted.map(([,v])=>Math.abs(v.pnl)))||1;
+        return '<div style="display:flex;align-items:flex-end;gap:6px;height:110px;padding-bottom:20px;">'+
+          sorted.map(([,v])=>{
+            const h=Math.round(Math.abs(v.pnl)/maxAbs*80);
+            const col=v.pnl>=0?'var(--green)':'var(--red)';
+            const tip=v.pnl>=0?'+$'+v.pnl.toLocaleString():'-$'+Math.abs(v.pnl).toLocaleString();
+            return`<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:2px;" title="${tip}">
+              <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col}">${tip}</div>
+              <div style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;min-height:2px;"></div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--text3);white-space:nowrap">${v.label}</div>
+            </div>`;
+          }).join('')+'</div>';
+      })()}</div>`;
 }
 
 function buildFilters(){
