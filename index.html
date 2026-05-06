@@ -33,7 +33,7 @@
   .nav-tab:hover{color:var(--text);}
   .nav-tab.active{color:var(--green);border-bottom-color:var(--green);}
   .page{display:none;}.page.active{display:block;}
-  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px;}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:20px;}
   .mc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;transition:border-color 0.2s;}
   .mc:hover{border-color:var(--border2);}.mc.hi{border-color:rgba(0,229,160,0.3);background:rgba(0,229,160,0.05);}
   .mc-label{font-family:var(--mono);font-size:15px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
@@ -202,8 +202,13 @@
 
 <!-- ══ CLOSED TRADES ══ -->
 <div class="page" id="page-closed">
-  <div class="metrics" id="closed-metrics"><div class="loading">Loading closed trades...</div></div>
-  <div class="charts" id="closed-charts" style="margin-bottom:20px;"></div>
+  <div style="display:grid;grid-template-columns:3fr 1.5fr;column-gap:12px;row-gap:0;margin-bottom:20px;align-items:stretch;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="metrics" id="closed-metrics" style="margin-bottom:0;"><div class="loading">Loading closed trades...</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="closed-charts"></div>
+    </div>
+    <div class="cc" id="closed-monthly" style="display:flex;flex-direction:column;height:100%;"></div>
+  </div>
   <div id="multiplier-rates" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
   <div class="controls">
     <span class="ctrl-label">Filter:</span>
@@ -612,13 +617,12 @@ function buildClosedMetrics(){
   const totalPnl=CLOSED.reduce((s,t)=>s+t.total_pnl,0);
   const totalCost=CLOSED.reduce((s,t)=>s+(t.actualCost||1000),0);
   const roi=Math.round((totalPnl/totalCost)*100);
-  const best=CLOSED.reduce((a,b)=>a.total_pnl>b.total_pnl?a:b);
   document.getElementById('closed-metrics').innerHTML=[
     {l:'Total Profits',v:dol(totalPnl),c:totalPnl>=0?'g':'r',s:`${n} closed positions`},
     {l:'Win Rate',v:wr+'%',c:'g',s:`${wins.length} wins · ${n-wins.length-evens.length} losses`},
     {l:'ROI',v:roi+'%',c:roi>=0?'g':'r',s:'$'+totalCost.toLocaleString()+' total deployed'},
-    {l:'Best Exit',v:best.ticker,c:'o',s:dol(best.total_pnl)+' banked'},
-    {l:'Trades',v:n,c:'',s:'closed · permanent record'},
+    
+    
   ].map(m=>`<div class="mc${m.c==='o'?' hi':''}"><div class="mc-label">${m.l}</div><div class="mc-val ${m.c}">${m.v}</div><div class="mc-sub">${m.s}</div></div>`).join('');
 }
 
@@ -638,7 +642,7 @@ function buildCharts(){
 }
 
 function buildClosedCharts(){
-  if(!CLOSED.length){document.getElementById('closed-charts').innerHTML='';return;}
+  if(!CLOSED.length){document.getElementById('closed-charts').innerHTML='';document.getElementById('closed-monthly').innerHTML='';return;}
   const tm={};
   CLOSED.forEach(t=>{const th=t.theme||t.sector||'Other';tm[th]=(tm[th]||0)+t.total_pnl;});
   const themes=Object.entries(tm).sort((a,b)=>b[1]-a[1]);
@@ -647,38 +651,36 @@ function buildClosedCharts(){
   const evens2=CLOSED.filter(t=>t.total_pnl===0);
   const decided2=CLOSED.length-evens2.length;
   const wr=decided2>0?Math.round(wins.length/decided2*100):0;
-  const sorted=[...CLOSED].sort((a,b)=>b.total_pnl-a.total_pnl);
-  const perf=[...sorted.slice(0,5),...sorted.slice(-Math.min(3,sorted.length))].filter((t,i,a)=>a.indexOf(t)===i);
-  const pMax=Math.max(...perf.map(t=>Math.abs(t.total_pnl)))||1;
   document.getElementById('closed-charts').innerHTML=`
     <div class="cc"><div class="cc-title">P&L by Theme</div>${themes.map(([th,v])=>{const col=v>=0?'#00e5a0':'#ff4d6d',w=Math.round(Math.abs(v)/tMax*100);return`<div class="br"><div class="br-label">${th}</div><div class="br-track"><div class="br-fill" style="width:${w}%;background:${col}"></div></div><div class="br-cnt" style="width:70px;color:${col}">${v>=0?'+$':'-$'}${Math.abs(v).toLocaleString()}</div></div>`;}).join('')}</div>
     <div class="cc"><div class="cc-title">Win / Loss</div><div style="display:flex;gap:24px;margin-bottom:12px;"><div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--green)">${wins.length}</div><div style="font-size:15px;color:var(--text3)">winners</div></div><div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--red)">${losses.length}</div><div style="font-size:15px;color:var(--text3)">losers</div></div><div><div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--blue)">${evens2.length}</div><div style="font-size:15px;color:var(--text3)">breakeven</div></div></div><div class="wr-bar"><div class="wr-fill" style="width:${wr}%"></div></div><div style="font-family:var(--mono);font-size:12px;color:var(--text3)">${wr}% WIN RATE · ${CLOSED.length} TOTAL</div></div>
-    <div class="cc"><div class="cc-title">Monthly P&L</div>${(()=>{
-        const months={};
-        CLOSED.forEach(t=>{
-          if(!t.close_date) return;
-          const parts=t.close_date.split('/');
-          if(parts.length<2) return;
-          const key=parts[2]+'-'+parts[0].padStart(2,'0');
-          const label=new Date(parseInt(parts[2]),parseInt(parts[0])-1,1).toLocaleString('en-US',{month:'short',year:'2-digit'});
-          if(!months[key]) months[key]={label,pnl:0};
-          months[key].pnl+=t.total_pnl;
-        });
-        const sorted=Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0]));
-        if(!sorted.length) return '<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:20px 0">No closed trades yet</div>';
-        const maxAbs=Math.max(...sorted.map(([,v])=>Math.abs(v.pnl)))||1;
-        return '<div style="display:flex;align-items:flex-end;gap:6px;height:110px;padding-bottom:20px;">'+
-          sorted.map(([,v])=>{
-            const h=Math.round(Math.abs(v.pnl)/maxAbs*80);
-            const col=v.pnl>=0?'var(--green)':'var(--red)';
-            const tip=v.pnl>=0?'+$'+v.pnl.toLocaleString():'-$'+Math.abs(v.pnl).toLocaleString();
-            return`<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:2px;" title="${tip}">
-              <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col}">${tip}</div>
-              <div style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;min-height:2px;"></div>
-              <div style="font-family:var(--mono);font-size:11px;color:var(--text3);white-space:nowrap">${v.label}</div>
-            </div>`;
-          }).join('')+'</div>';
-      })()}</div>`;
+  `;
+  const months={};
+  CLOSED.forEach(t=>{
+    if(!t.close_date) return;
+    const parts=t.close_date.split('/');
+    if(parts.length<2) return;
+    const key=parts[2]+'-'+parts[0].padStart(2,'0');
+    const label=new Date(parseInt(parts[2]),parseInt(parts[0])-1,1).toLocaleString('en-US',{month:'short',year:'2-digit'});
+    if(!months[key]) months[key]={label,pnl:0};
+    months[key].pnl+=t.total_pnl;
+  });
+  const sorted=Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0]));
+  const el=document.getElementById('closed-monthly');
+  if(!sorted.length){el.innerHTML='<div class="cc-title">Monthly P&L</div>';return;}
+  const maxAbs=Math.max(...sorted.map(([,v])=>Math.abs(v.pnl)))||1;
+  const bars=sorted.map(([,v])=>{
+    const h=Math.round(Math.abs(v.pnl)/maxAbs*180);
+    const col=v.pnl>=0?'var(--green)':'var(--red)';
+    const tip=(v.pnl>=0?'+$':'-$')+Math.abs(v.pnl).toLocaleString();
+    return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:${col}">${tip}</div>
+      <div style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;min-height:2px;"></div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text3);white-space:nowrap">${v.label}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="cc-title">Monthly P&L</div>
+    <div style="flex:1;display:flex;align-items:flex-end;gap:6px;padding-top:12px;border-bottom:1px solid var(--border);">${bars}</div>`;
 }
 
 function buildFilters(){
