@@ -638,7 +638,25 @@ function buildCharts(){
   document.getElementById('charts').innerHTML=`
     <div class="cc"><div class="cc-title">By Theme</div>${themes.map(([th,c])=>`<div class="br"><div class="br-label">${th}</div><div class="br-track"><div class="br-fill" style="width:${Math.round(c/tMax*100)}%;background:${TC[th]||'#888'}"></div></div><div class="br-cnt">${c}</div></div>`).join('')}</div>
     <div class="cc"><div class="cc-title">By Sector</div>${sectors.map(([s,c])=>`<div class="br"><div class="br-label">${s}</div><div class="br-track"><div class="br-fill" style="width:${Math.round(c/sMax*100)}%;background:#5b8cff"></div></div><div class="br-cnt">${c}</div></div>`).join('')}</div>
-    <div class="cc"><div class="cc-title">Net P&L Per Position</div>${perf.map(t=>{const p=t.total_pnl,f=Math.abs(p)/pMax,col=p>0?'#00e5a0':'#ff4d6d',left=p>=0?50:50-f*47,w=f*47;return`<div class="perf-row"><div class="perf-tick" style="color:${tColor(t)}">${t.ticker}</div><div class="perf-wrap"><div class="perf-zero"></div><div class="perf-bar" style="left:${left}%;width:${w}%;background:${col}"></div></div><div class="perf-pct ${p>0?'pos':'neg'}">${p>=0?'+$':'-$'}${Math.abs(p).toLocaleString()}</div></div>`;}).join('')}</div>`;
+    <div class="cc"><div class="cc-title">Sector Exposure</div>${(()=>{
+      const sec={};
+      ACTIVE.forEach(t=>{const s=t.sector||t.theme||'Other';sec[s]=(sec[s]||0)+1;});
+      const total=ACTIVE.length||1;
+      const entries=Object.entries(sec).sort((a,b)=>b[1]-a[1]);
+      const colors=['#00e5a0','#5b8cff','#f5c842','#ff4d6d','#a56af5','#00c9d4','#ff8c42','#68c44a','#f060b5','#8a8fa8'];
+      let angle=0;
+      const slices=entries.map(([s,c],i)=>{
+        const pct=c/total;
+        const a1=angle,a2=angle+pct*360; angle=a2;
+        const r=70,cx=80,cy=80;
+        const x1=cx+r*Math.cos((a1-90)*Math.PI/180),y1=cy+r*Math.sin((a1-90)*Math.PI/180);
+        const x2=cx+r*Math.cos((a2-90)*Math.PI/180),y2=cy+r*Math.sin((a2-90)*Math.PI/180);
+        return{s,c,pct,col:colors[i%colors.length],x1,y1,x2,y2,large:pct>0.5?1:0,cx,cy,r};
+      });
+      const svgSlices=slices.map(sl=>`<path d="M${sl.cx},${sl.cy} L${sl.x1.toFixed(1)},${sl.y1.toFixed(1)} A${sl.r},${sl.r} 0 ${sl.large},1 ${sl.x2.toFixed(1)},${sl.y2.toFixed(1)} Z" fill="${sl.col}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+      const legend=slices.map(sl=>`<div style="display:flex;align-items:center;gap:6px;"><div style="width:8px;height:8px;border-radius:2px;background:${sl.col};flex-shrink:0;"></div><span style="color:var(--text2);font-size:12px;">${sl.s}</span><span style="color:var(--text3);font-family:var(--mono);font-size:11px;margin-left:auto;">${Math.round(sl.pct*100)}%</span></div>`).join('');
+      return`<div style="display:flex;gap:16px;align-items:center;"><svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">${svgSlices}</svg><div style="display:flex;flex-direction:column;gap:5px;flex:1;">${legend}</div></div>`;
+    })()}</div>`;
 }
 
 function buildClosedCharts(){
