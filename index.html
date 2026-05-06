@@ -391,21 +391,22 @@ function buildSymbol(ticker,contract,expiration,entryDate,strike,cpFlag){
 }
 
 function calcPnl(t){
-  const cost=1000, mult=t.max/t.entry;
+  const contractCost=t.entry*100;
+  const floored=Math.floor(1000/contractCost);
+  const ceiled=floored+1;
+  const contracts=(ceiled*contractCost-1000)<=100?ceiled:floored;
+  const actualCost=contracts*contractCost;
+  const mult=t.max/t.entry;
   let realized=0, remUnits=1.0;
   const stages=[];
   if(mult>=2){
-    realized += 0.5*2*cost; remUnits=0.5; stages.push('2x');
-    if(mult>=3){ realized += 0.5*3*cost; remUnits=0; stages.push('3x'); }
+    realized += Math.floor(contracts/2)*contractCost*2; remUnits=0.5; stages.push('2x');
+    if(mult>=3){ realized += (contracts-Math.floor(contracts/2))*contractCost*3; remUnits=0; stages.push('3x'); }
   }
-  const unrealized=remUnits>0 ? Math.round(remUnits*(t.current/t.entry)*cost) : 0;
-  const total_pnl=Math.round(realized+unrealized-cost);
-  const pnl_pct=Math.round((total_pnl/cost)*100);
-  const contractCost=t.entry*100;
-  const floored=Math.floor(cost/contractCost);
-  const ceiled=floored+1;
-  const contracts=(ceiled*contractCost-cost)<=100?ceiled:floored;
-  return{realized:Math.round(realized),unrealized,total_pnl,pnl_pct,rem_pct:Math.round(remUnits*100),stages,contracts};
+  const unrealized=remUnits>0 ? Math.round(remUnits*(t.current/t.entry)*actualCost) : 0;
+  const total_pnl=Math.round(realized+unrealized-actualCost);
+  const pnl_pct=Math.round((total_pnl/actualCost)*100);
+  return{realized:Math.round(realized),unrealized,total_pnl,pnl_pct,rem_pct:Math.round(remUnits*100),stages,contracts,actualCost:Math.round(actualCost)};
 }
 
 function calcPnlClosed(t){
