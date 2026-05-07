@@ -393,7 +393,7 @@ def calc_takeoff_meter(bars195, sym=""):
     start     = max(roc_len, n - pct_len)
     roc_values = [
         (closes[i] - closes[i - roc_len]) / closes[i - roc_len] * 100
-        for i in range(start, n)
+        for i in range(start, n - 1)  # exclude current bar so it cant inflate its own rank
         if i >= roc_len
     ]
 
@@ -418,9 +418,9 @@ def calc_takeoff_meter(bars195, sym=""):
     score += roc_pct
     bd["rocPercentile"] = roc_pct
 
-    if sym == "HPE":
-        print(f"  [HPE DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
-        print(f"  [HPE DEBUG] live_roc={live_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
+    if sym in ("HPE", "DKNG"):
+        print(f"  [{sym} DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
+        print(f"  [{sym} DEBUG] live_roc={live_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
 
     return {"score": min(10, max(0, score)), "breakdown": bd}
 
