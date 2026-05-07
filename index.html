@@ -628,28 +628,18 @@ function buildClosedMetrics(){
 
 function makePie(entries, total){
   const colors=['#00e5a0','#5b8cff','#f5c842','#ff4d6d','#a56af5','#00c9d4','#ff8c42','#68c44a','#f060b5','#8a8fa8'];
-  const W=400,H=400,cx=200,cy=200,r=110,rLabel=148;
+  const r=85,cx=95,cy=95;
   let angle=0;
   const slices=entries.map(([s,c],i)=>{
     const pct=c/total;
     const a1=angle,a2=angle+pct*360; angle=a2;
-    const mid=(a1+a2)/2;
     const x1=cx+r*Math.cos((a1-90)*Math.PI/180),y1=cy+r*Math.sin((a1-90)*Math.PI/180);
     const x2=cx+r*Math.cos((a2-90)*Math.PI/180),y2=cy+r*Math.sin((a2-90)*Math.PI/180);
-    const lx=cx+rLabel*Math.cos((mid-90)*Math.PI/180);
-    const ly=cy+rLabel*Math.sin((mid-90)*Math.PI/180);
-    const anchor=lx>cx?'start':'end';
-    const ox=cx+(rLabel+28)*Math.cos((mid-90)*Math.PI/180);
-    const oy=cy+(rLabel+28)*Math.sin((mid-90)*Math.PI/180);
-    return{s,c,pct,col:colors[i%colors.length],x1,y1,x2,y2,large:pct>0.5?1:0,lx,ly,ox,oy,anchor,mid,cx,cy,r};
+    return{s,c,pct,col:colors[i%colors.length],x1,y1,x2,y2,large:pct>0.5?1:0,cx,cy,r};
   });
-  const svgSlices=slices.map(sl=>`<path d="M${sl.cx},${sl.cy} L${sl.x1.toFixed(1)},${sl.y1.toFixed(1)} A${sl.r},${sl.r} 0 ${sl.large},1 ${sl.x2.toFixed(1)},${sl.y2.toFixed(1)} Z" fill="${sl.col}" stroke="var(--surface)" stroke-width="2"/>`).join('');
-  const svgLabels=slices.map(sl=>`
-    <line x1="${(sl.cx+sl.r*0.85*Math.cos((sl.mid-90)*Math.PI/180)).toFixed(1)}" y1="${(sl.cy+sl.r*0.85*Math.sin((sl.mid-90)*Math.PI/180)).toFixed(1)}" x2="${sl.ox.toFixed(1)}" y2="${sl.oy.toFixed(1)}" stroke="${sl.col}" stroke-width="1" opacity="0.7"/>
-    <text x="${sl.ox.toFixed(1)}" y="${(sl.oy-6).toFixed(1)}" text-anchor="${sl.anchor}" fill="${sl.col}" font-size="13" font-family="monospace" font-weight="700">${Math.round(sl.pct*100)}%</text>
-    <text x="${sl.ox.toFixed(1)}" y="${(sl.oy+8).toFixed(1)}" text-anchor="${sl.anchor}" fill="#c8cdd8" font-size="12" font-family="monospace">${sl.s}</text>
-  `).join('');
-  return`<svg width="100%" viewBox="0 0 ${W} ${H}" style="overflow:visible;">${svgSlices}${svgLabels}</svg>`;
+  const svgSlices=slices.map(sl=>`<path d="M${sl.cx},${sl.cy} L${sl.x1.toFixed(1)},${sl.y1.toFixed(1)} A${sl.r},${sl.r} 0 ${sl.large},1 ${sl.x2.toFixed(1)},${sl.y2.toFixed(1)} Z" fill="${sl.col}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+  const legend=slices.map(sl=>`<div style="display:flex;align-items:center;gap:5px;"><div style="width:10px;height:10px;border-radius:2px;background:${sl.col};flex-shrink:0;"></div><span style="color:var(--text2);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sl.s}</span><span style="color:var(--text3);font-family:var(--mono);font-size:15px;font-weight:700;margin-left:auto;padding-left:6px;">${Math.round(sl.pct*100)}%</span></div>`).join('');
+  return`<div style="display:flex;align-items:center;gap:12px;"><svg width="190" height="190" viewBox="0 0 190 190" style="flex-shrink:0;">${svgSlices}</svg><div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;">${legend}</div></div>`;
 }
 
 function buildCharts(){
