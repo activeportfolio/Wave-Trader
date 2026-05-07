@@ -369,7 +369,7 @@ def calc_takeoff_meter(bars195, sym=""):
         sum(closes[i - ma_period + 1 : i + 1]) / ma_period
         for i in range(ma_period - 1, n)
     ]
-    ma_slope    = 1 if len(ma_arr) >= 2 and ma_arr[-1] > ma_arr[-2] else 0
+    ma_slope    = 1 if len(ma_arr) >= 6 and ma_arr[-1] > ma_arr[-6] else 0  # slope over last 5 bars
     price_vs_ma = 1 if closes[-1] > ma_arr[-1] else 0
     score += ma_slope + price_vs_ma
     bd["maSlope"]    = ma_slope
@@ -418,7 +418,7 @@ def calc_takeoff_meter(bars195, sym=""):
     score += roc_pct
     bd["rocPercentile"] = roc_pct
 
-    if sym in ("HPE", "DKNG", "APP"):
+    if sym in ("HPE", "DKNG", "APP", "UNG", "CLOV"):
         print(f"  [{sym} DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
         print(f"  [{sym} DEBUG] live_roc={live_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
 
