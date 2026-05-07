@@ -418,7 +418,7 @@ def calc_takeoff_meter(bars195, sym=""):
     score += roc_pct
     bd["rocPercentile"] = roc_pct
 
-    if sym in ("HPE", "DKNG", "APP", "UNG", "CLOV"):
+    if sym in ("HPE", "DKNG", "APP", "UNG", "CLOV", "COST"):
         print(f"  [{sym} DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
         print(f"  [{sym} DEBUG] live_roc={live_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
 
