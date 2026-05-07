@@ -6,6 +6,8 @@ on:
     - cron: '30 13 * * 1-5'
     - cron: '0,30 14-19 * * 1-5'
     - cron: '0 20 * * 1-5'
+    # Weekend keepalive — runs once Saturday to keep repo active
+    - cron: '0 14 * * 6'
   workflow_dispatch:
 
 permissions:
