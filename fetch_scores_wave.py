@@ -376,7 +376,7 @@ def calc_takeoff_meter(bars195, sym=""):
     bd["priceVsMa"]  = price_vs_ma
 
     # 3 — Current bar + 2 prior closed bars (n-1, n-2, n-3)
-    roc_len  = 3
+    roc_len  = 1
     roc_bars = 0
     for i in range(0, 3):           # i=0,1,2 → current bar + 2 prior
         idx = n - 1 - i             # n-1, n-2, n-3
@@ -418,7 +418,7 @@ def calc_takeoff_meter(bars195, sym=""):
     score += roc_pct
     bd["rocPercentile"] = roc_pct
 
-    if sym in ("HPE", "DKNG"):
+    if sym in ("HPE", "DKNG", "APP"):
         print(f"  [{sym} DEBUG] maSlope={ma_slope} priceVsMa={price_vs_ma} rocBars={roc_bars} rocPct={roc_pct} TOTAL={min(10,max(0,score))}")
         print(f"  [{sym} DEBUG] live_roc={live_roc:.3f}  p90={p90:.3f}  roc_values_top3={sorted(roc_values)[-3:]}")
 
