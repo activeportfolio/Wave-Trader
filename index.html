@@ -584,7 +584,7 @@ function buildMetrics(){
   document.getElementById('metrics').innerHTML=[
     {l:'Net P&L',v:dol(totP),c:totP>=0?'g':'r',s:`across ${n} active positions`},
     {l:'At Risk',v:'$'+totU.toLocaleString(),c:'b',s:'current open position value'},
-    {l:'Hit 2x',v:hit2,c:'g',s:`${hit3} fully closed at 3x`},
+    {l:'Hit 2x',v:hit2,c:'g',s:'positions hit 2x target'},
     {l:'Best Trade',v:best.ticker,c:'o',s:dol(best.total_pnl)+' net P&L'},
     {l:'Positions',v:n,c:'',s:'active · live prices'},
   ].map(m=>`<div class="mc${m.c==='o'?' hi':''}"><div class="mc-label">${m.l}</div><div class="mc-val ${m.c}">${m.v}</div><div class="mc-sub">${m.s}</div></div>`).join('');
@@ -671,8 +671,7 @@ function buildCharts(){
       });
       return makePie(Object.entries(exp).sort((a,b)=>b[1]-a[1]),ACTIVE.length||1);
     })()}</div>
-  \`;
-    })()}</div>`;
+  `;
 }
 
 function buildClosedCharts(){
